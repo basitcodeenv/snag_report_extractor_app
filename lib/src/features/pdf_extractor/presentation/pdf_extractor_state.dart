@@ -13,8 +13,11 @@ class PdfFileProgress {
   final bool done;
   final String? error;
   /// Timestamp when this file started processing
-  final DateTime? startTime;
   final Isolate? isolate;
+
+  // --- ETA tracking ---
+  final List<int> pageDurations; // stores ms/page
+  final DateTime? lastPageTime;
 
   PdfFileProgress({
     required this.fileName,
@@ -25,9 +28,10 @@ class PdfFileProgress {
     this.outputDir,
     this.done = false,
     this.error,
-    this.startTime,
     this.isolate,
-  });
+    List<int>? pageDurations,
+    this.lastPageTime,
+  }) : pageDurations = pageDurations ?? [];
 
   PdfFileProgress copyWith({
     String? fileName,
@@ -40,10 +44,11 @@ class PdfFileProgress {
     String? outputDir,
     String? error,
     Isolate? isolate,
+    List<int>? pageDurations,
+    DateTime? lastPageTime,
   }) {
     return PdfFileProgress(
       fileName: fileName ?? this.fileName,
-      startTime: startTime ?? this.startTime,
       currentPage: currentPage ?? this.currentPage,
       totalPages: totalPages ?? this.totalPages,
       currentImage: currentImage ?? this.currentImage,
@@ -52,19 +57,39 @@ class PdfFileProgress {
       outputDir: outputDir ?? this.outputDir,
       error: error ?? this.error,
       isolate: isolate ?? this.isolate,
+      pageDurations: pageDurations ?? List.from(this.pageDurations),
+      lastPageTime: lastPageTime ?? this.lastPageTime,
     );
+  }
+
+  /// Call this when a page finishes processing
+  PdfFileProgress markPageDone() {
+    final now = DateTime.now();
+    final newDurations = List<int>.from(pageDurations);
+
+    if (lastPageTime != null) {
+      final duration = now.difference(lastPageTime!).inMilliseconds;
+      newDurations.add(duration);
+
+      // keep only last 10 page durations for stable avg
+      if (newDurations.length > 10) {
+        newDurations.removeAt(0);
+      }
+    }
+
+    return copyWith(pageDurations: newDurations, lastPageTime: now);
   }
 
   /// Estimated time remaining
   Duration? get remainingTime {
-    if (startTime == null || currentPage == 0 || totalPages == 0) return null;
+    if (currentPage == 0 || totalPages == 0 || pageDurations.isEmpty) {
+      return null;
+    }
 
-    final elapsed = DateTime.now().difference(startTime!);
-    final avgPerPage = elapsed.inMilliseconds / currentPage;
+    final avgMs =
+        pageDurations.reduce((a, b) => a + b) / pageDurations.length;
     final remainingPages = totalPages - currentPage;
-    final remainingMs = (remainingPages * avgPerPage).round();
-
-    return Duration(milliseconds: remainingMs);
+    return Duration(milliseconds: (remainingPages * avgMs).round());
   }
 
 }
@@ -76,7 +101,6 @@ class PdfExtractorState {
   final DropItem? currentFile;
   final int processedFiles;
   final List<String> errors;
-  final List<String> outputPaths;
 
   final Map<String, PdfFileProgress> progress;
 
@@ -87,7 +111,6 @@ class PdfExtractorState {
     this.currentFile,
     this.processedFiles = 0,
     this.errors = const [],
-    this.outputPaths = const [],
     this.progress = const {},
   });
 
@@ -108,7 +131,6 @@ class PdfExtractorState {
       currentFile: currentFile ?? this.currentFile,
       processedFiles: processedFiles ?? this.processedFiles,
       errors: errors ?? this.errors,
-      outputPaths: outputPaths ?? this.outputPaths,
       progress: progress ?? this.progress,
     );
   }

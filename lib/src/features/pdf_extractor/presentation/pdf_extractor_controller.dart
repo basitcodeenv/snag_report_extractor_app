@@ -86,7 +86,6 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
             ...state.progress,
             filePath: PdfFileProgress(
               fileName: fileName,
-              startTime: DateTime.now(),
               isolate: isolate,
             ),
           },
@@ -113,12 +112,13 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
               print(
                 "Processed page ${progress["page"]}/${progress["pageCount"]}",
               );
+
             state = state.copyWith(progress: {
               ...state.progress,
               filePath: currentProgress.copyWith(
                 currentPage: progress["page"],
                 totalPages: progress["pageCount"],
-              ),
+              ).markPageDone(),
             });
           }
 
@@ -141,7 +141,6 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
                 ...state.progress,
                 filePath: currentProgress.copyWith(done: true, outputDir: progress["outputDir"]),
               },
-              outputPaths: [...state.outputPaths, progress["outputDir"] ?? ""],
               processedFiles: state.processedFiles + 1,
             );
             receivePort.close();

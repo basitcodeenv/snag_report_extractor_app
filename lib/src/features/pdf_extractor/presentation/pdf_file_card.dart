@@ -12,6 +12,8 @@ class PdfFileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final eta = progress?.remainingTime;
+    print('ETA');
+    print(eta);
     final progressRatio = (progress != null && progress!.totalPages > 0)
         ? progress!.currentPage / progress!.totalPages
         : 0.0;
@@ -39,14 +41,16 @@ class PdfFileCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (progress != null && eta != null && progress!.done == false)
-                  Chip(
-                    label: Text(
-                      "ETA: ${eta.inMinutes}m ${eta.inSeconds % 60}s",
-                    ),
-                    backgroundColor: Colors.orange.shade100,
-                    labelStyle: const TextStyle(color: Colors.orange),
-                  ),
+                // if (progress != null && eta != null && progress!.done == false)
+                //     Chip(
+                //     label: Text(
+                //       eta.inMinutes > 0
+                //         ? "ETA: ${eta.inMinutes}m ${eta.inSeconds % 60}s"
+                //         : "ETA: ${eta.inSeconds % 60}s",
+                //     ),
+                //     backgroundColor: Colors.orange.shade100,
+                //     labelStyle: const TextStyle(color: Colors.orange),
+                //   ),
 
                 // Delete button
                 IconButton(

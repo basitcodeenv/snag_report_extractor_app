@@ -1,8 +1,6 @@
 // pdf_extractor_screen.dart
 import 'dart:io';
-import 'dart:developer';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:snag_report_extractor_app/src/constants/app_sizes.dart';
@@ -130,12 +128,20 @@ class PdfExtractorScreen extends ConsumerWidget {
                 });
               },
             ),
-            gapH16,
-            ElevatedButton(
-              onPressed: () async {
-                await pdfExtractorControllerProvider.processPdfFiles();
-              },
-              child: const Text("Extract"),
+            gapH8,
+            SizedBox(
+              width: 150,
+              height: 40,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.play_arrow, size: 22),
+                label: const Text("Extract", style: TextStyle(fontSize: 16)),
+                onPressed: () async {
+                  await pdfExtractorControllerProvider.processPdfFiles();
+                },
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
             ),
           ],
         ),

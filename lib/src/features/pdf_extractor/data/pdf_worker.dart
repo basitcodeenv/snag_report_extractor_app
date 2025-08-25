@@ -106,8 +106,8 @@ Future<void> extractPdfWorker(Map<String, dynamic> data) async {
         if (originalImage == null) continue;
 
         // Calculate new image dimensions (add space for caption)
-        const captionHeight = 80;
-        const padding = 20;
+        const captionHeight = 60;
+        const padding = 10;
         final newHeight = originalImage.height + captionHeight + (padding * 2);
 
         // Create new image with white background
@@ -125,7 +125,7 @@ Future<void> extractPdfWorker(Map<String, dynamic> data) async {
           newImage,
           caption,
           padding,
-          originalImage.height + padding + 20,
+          originalImage.height + padding + 10,
         );
 
         final imgPath = p.join(outputDir, "image_${imageCounter++}.jpg");
@@ -141,8 +141,6 @@ Future<void> extractPdfWorker(Map<String, dynamic> data) async {
     sendPort.send({"done": true, "outputDir": outputDir});
   } catch (e) {
     sendPort.send({"error": e.toString()});
-  } finally {
-    // repo.dispose();
   }
 }
 
