@@ -22,6 +22,8 @@ int main(int argc, char **argv)
     fz_document *doc = NULL;
     char *result = NULL;
 
+    float scale = 1.0f;
+
     ctx = fz_new_context(NULL, NULL, FZ_STORE_UNLIMITED);
     if (!ctx) {
         fprintf(stderr, "Cannot create MuPDF context\n");
@@ -52,6 +54,7 @@ int main(int argc, char **argv)
 
                 fz_stext_options opts = {0};
                 opts.flags = FZ_STEXT_PRESERVE_IMAGES;
+                opts.scale = scale;
 
                 dev = fz_new_stext_device(ctx, stext, &opts);
                 fz_run_page(ctx, page, dev, fz_identity, NULL);
@@ -73,8 +76,10 @@ int main(int argc, char **argv)
                         fz_write_string(ctx, out, "{");
                         fz_write_printf(ctx, out, "%q:%q,", "type", "text");
                         fz_write_printf(ctx, out, "%q:[%d,%d,%d,%d],", "bbox",
-                            block->bbox.x0, block->bbox.y0,
-                            block->bbox.x1, block->bbox.y1
+                            (int)(block->bbox.x0 * scale),
+                            (int)(block->bbox.y0 * scale),
+                            (int)(block->bbox.x1 * scale),
+                            (int)(block->bbox.y1 * scale)
                         );
                         fz_write_string(ctx, out, "\"lines\":[");
 
@@ -129,36 +134,38 @@ int main(int argc, char **argv)
                     }
                     else if (block->type == FZ_STEXT_BLOCK_IMAGE) {
                         /* ---- IMAGE BLOCK ---- */
-                        fz_image *img = NULL;
-                        fz_buffer *png_buf = NULL;
+                        // fz_image *img = NULL;
+                        // fz_buffer *png_buf = NULL;
 
                         fz_write_string(ctx, out, "{");
                         fz_write_printf(ctx, out, "%q:%q,", "type", "image");
                         fz_write_printf(ctx, out, "%q:[%d,%d,%d,%d]", "bbox",
-                            block->bbox.x0, block->bbox.y0,
-                            block->bbox.x1, block->bbox.y1
+                            (int)(block->bbox.x0 * scale),
+                            (int)(block->bbox.y0 * scale),
+                            (int)(block->bbox.x1 * scale),
+                            (int)(block->bbox.y1 * scale)
                         );
 
                         if (include_image_data) {
                             fz_try(ctx) {
-                                img = block->u.i.image;
-                                int w = block->bbox.x1 - block->bbox.x0;
-                                int h = block->bbox.y1 - block->bbox.y0;
-                                if (w * h > 16777216) { // 4K * 4K pixels max
-                                    fz_write_string(ctx, out, ",\"data\":null,\"error\":\"Image too large\"");
-                                } else {
-                                    png_buf = fz_new_buffer_from_image_as_png(ctx, img, fz_default_color_params);
+                                // img = block->u.i.image;
+                                // int w = block->bbox.x1 - block->bbox.x0;
+                                // int h = block->bbox.y1 - block->bbox.y0;
+                                // if (w * h > 16777216) { // 4K * 4K pixels max
+                                //     fz_write_string(ctx, out, ",\"data\":null,\"error\":\"Image too large\"");
+                                // } else {
+                                    // png_buf = fz_new_buffer_from_image_as_png(ctx, img, fz_default_color_params);
 
-                                    fz_write_string(ctx, out, ",\"data\":\"");
+                                    // fz_write_string(ctx, out, ",\"data\":\"");
 
-                                    fz_write_base64_buffer(ctx, out, png_buf, 0);
+                                    // fz_write_base64_buffer(ctx, out, png_buf, 0);
 
-                                    fz_write_string(ctx, out, "\"");
+                                    // fz_write_string(ctx, out, "\"");
 
-                                }
+                                // }
                             }
                             fz_always(ctx) {
-                                fz_drop_buffer(ctx, png_buf);
+                                // fz_drop_buffer(ctx, png_buf);
                             }
                             fz_catch(ctx) {
                                 fz_write_string(ctx, out, ",\"data\":null");

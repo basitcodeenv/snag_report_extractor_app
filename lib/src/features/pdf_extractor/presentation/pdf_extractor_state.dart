@@ -1,4 +1,6 @@
 
+import 'dart:isolate';
+
 import 'package:desktop_drop/desktop_drop.dart';
 
 class PdfFileProgress {
@@ -10,6 +12,9 @@ class PdfFileProgress {
   final String? outputDir;
   final bool done;
   final String? error;
+  /// Timestamp when this file started processing
+  final DateTime? startTime;
+  final Isolate? isolate;
 
   PdfFileProgress({
     required this.fileName,
@@ -20,31 +25,52 @@ class PdfFileProgress {
     this.outputDir,
     this.done = false,
     this.error,
+    this.startTime,
+    this.isolate,
   });
 
   PdfFileProgress copyWith({
+    String? fileName,
+    DateTime? startTime,
     int? currentPage,
     int? totalPages,
     int? currentImage,
     int? totalImages,
-    String? outputDir,
     bool? done,
+    String? outputDir,
     String? error,
+    Isolate? isolate,
   }) {
     return PdfFileProgress(
-      fileName: fileName,
+      fileName: fileName ?? this.fileName,
+      startTime: startTime ?? this.startTime,
       currentPage: currentPage ?? this.currentPage,
       totalPages: totalPages ?? this.totalPages,
       currentImage: currentImage ?? this.currentImage,
       totalImages: totalImages ?? this.totalImages,
-      outputDir: outputDir ?? this.outputDir,
       done: done ?? this.done,
+      outputDir: outputDir ?? this.outputDir,
       error: error ?? this.error,
+      isolate: isolate ?? this.isolate,
     );
   }
+
+  /// Estimated time remaining
+  Duration? get remainingTime {
+    if (startTime == null || currentPage == 0 || totalPages == 0) return null;
+
+    final elapsed = DateTime.now().difference(startTime!);
+    final avgPerPage = elapsed.inMilliseconds / currentPage;
+    final remainingPages = totalPages - currentPage;
+    final remainingMs = (remainingPages * avgPerPage).round();
+
+    return Duration(milliseconds: remainingMs);
+  }
+
 }
 
 class PdfExtractorState {
+  final bool isDragging;
   final bool isProcessing;
   final List<DropItem> files;
   final DropItem? currentFile;
@@ -55,6 +81,7 @@ class PdfExtractorState {
   final Map<String, PdfFileProgress> progress;
 
   PdfExtractorState({
+    this.isDragging = false,
     this.isProcessing = false,
     this.files = const [],
     this.currentFile,
@@ -65,6 +92,7 @@ class PdfExtractorState {
   });
 
   PdfExtractorState copyWith({
+    bool? isDragging,
     bool? isProcessing,
     List<DropItem>? files,
     DropItem? currentFile,
@@ -74,6 +102,7 @@ class PdfExtractorState {
     Map<String, PdfFileProgress>? progress,
   }) {
     return PdfExtractorState(
+      isDragging: isDragging ?? this.isDragging,
       isProcessing: isProcessing ?? this.isProcessing,
       files: files ?? this.files,
       currentFile: currentFile ?? this.currentFile,

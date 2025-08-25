@@ -63,6 +63,7 @@ DLL_EXPORT char* extract_page_json(const char* filename, int page_number, bool i
     fz_buffer *buf = NULL;
     fz_output *out = NULL;
     char *result = NULL;
+    float scale = 1.0f;
 
     // Register document handlers
     fz_register_document_handlers(ctx);
@@ -82,6 +83,7 @@ DLL_EXPORT char* extract_page_json(const char* filename, int page_number, bool i
 
         fz_stext_options opts = {0};
         opts.flags = FZ_STEXT_PRESERVE_IMAGES;
+        opts.scale = 1.0f;
 
         dev = fz_new_stext_device(ctx, stext, &opts);
         fz_run_page(ctx, page, dev, fz_identity, NULL);
@@ -103,8 +105,10 @@ DLL_EXPORT char* extract_page_json(const char* filename, int page_number, bool i
                 fz_write_string(ctx, out, "{");
                 fz_write_printf(ctx, out, "%q:%q,", "type", "text");
                 fz_write_printf(ctx, out, "%q:[%d,%d,%d,%d],", "bbox",
-                    block->bbox.x0, block->bbox.y0,
-                    block->bbox.x1, block->bbox.y1
+                    (int)(block->bbox.x0 * scale),
+                    (int)(block->bbox.y0 * scale),
+                    (int)(block->bbox.x1 * scale),
+                    (int)(block->bbox.y1 * scale)
                 );
                 fz_write_string(ctx, out, "\"lines\":[");
 
@@ -163,8 +167,10 @@ DLL_EXPORT char* extract_page_json(const char* filename, int page_number, bool i
                 fz_write_string(ctx, out, "{");
                 fz_write_printf(ctx, out, "%q:%q,", "type", "image");
                 fz_write_printf(ctx, out, "%q:[%d,%d,%d,%d]", "bbox",
-                    block->bbox.x0, block->bbox.y0,
-                    block->bbox.x1, block->bbox.y1
+                    (int)(block->bbox.x0 * scale),
+                    (int)(block->bbox.y0 * scale),
+                    (int)(block->bbox.x1 * scale),
+                    (int)(block->bbox.y1 * scale)
                 );
 
                 if (include_image_data) {

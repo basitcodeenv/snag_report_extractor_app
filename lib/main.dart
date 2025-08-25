@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:snag_report_extractor_app/src/app.dart';
-import 'package:worker_manager/worker_manager.dart';
 
 
 void main() async {
@@ -17,8 +16,6 @@ void main() async {
       // turn off the # in the URLs on the web
       usePathUrlStrategy();
       // setup the executor for background tasks
-      workerManager.log = true;
-      await workerManager.init(isolatesCount: 1, dynamicSpawning: false);
       // * Entry point for the app
       runApp(const ProviderScope(child: MyApp()));
 

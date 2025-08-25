@@ -1,5 +1,20 @@
 {
     "cSpell.words": [
         "LTWH"
-    ]
+    ],
+    "files.associations": {
+        "*.ejs": "html",
+        ".env*": "dotenv",
+        "stdio.h": "c",
+        "ctype.h": "c",
+        "string.h": "c",
+        "pdf.h": "c",
+        "fitz.h": "c",
+        "page.h": "c",
+        "__locale": "c",
+        "algorithm": "c",
+        "optional": "c",
+        "regex": "c",
+        "ios": "c"
+    }
 }
