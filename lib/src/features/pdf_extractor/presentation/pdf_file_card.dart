@@ -7,15 +7,22 @@ class PdfFileCard extends StatelessWidget {
   final PdfFileProgress? progress;
   final VoidCallback? onDelete;
 
-  const PdfFileCard({super.key, required this.file, this.progress, this.onDelete});
+  const PdfFileCard({
+    super.key,
+    required this.file,
+    this.progress,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final eta = progress?.remainingTime;
-    print('ETA');
-    print(eta);
-    final progressRatio = (progress != null && progress!.totalPages > 0)
-        ? progress!.currentPage / progress!.totalPages
+    // final eta = progress?.remainingTime;
+    // print('ETA');
+    // print(eta);
+    final progressRatio = (progress != null)
+        ? (progress!.totalPages > 0)
+              ? progress!.currentPage / progress!.totalPages
+              : null
         : 0.0;
 
     return Card(
@@ -75,7 +82,7 @@ class PdfFileCard extends StatelessWidget {
                   )
                 else if (progress!.done)
                   Chip(
-                    label: const Text("Done"),
+                    label: const Text("Complete"),
                     backgroundColor: Colors.green.shade100,
                     labelStyle: const TextStyle(color: Colors.green),
                   )
@@ -108,11 +115,13 @@ class PdfFileCard extends StatelessWidget {
 
             // Progress bar
             LinearProgressIndicator(
-              value: progress != null && progress!.totalPages > 0 ? progressRatio : 0,
+              value: progressRatio,
               minHeight: 8,
               borderRadius: BorderRadius.circular(8),
               backgroundColor: Colors.grey.shade200,
-              color: progress != null && progress!.done ? Colors.green : Colors.blue,
+              color: progress != null && progress!.done
+                  ? Colors.green
+                  : Colors.blue,
             ),
           ],
         ),

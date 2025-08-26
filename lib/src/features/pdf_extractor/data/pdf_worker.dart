@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
-import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:image/image.dart' as img;
@@ -20,7 +19,7 @@ void _drawText(img.Image image, String text, int x, int y) {
     x: x,
     y: y,
     color: img.ColorRgb8(0, 0, 0),
-    wrap: true
+    wrap: true,
   );
 }
 
@@ -35,13 +34,16 @@ Future<void> extractPdfWorker(Map<String, dynamic> data) async {
     final pages = output["pages"] as List<MuPdfPage>;
     final totalPages = output["page_count"] as int;
 
-
     Map<int, List<MuPdfBlock>> allTextBlocks = {};
     final imageBlocks = <int, List<MuPdfBlock>>{};
     final imageCaptions = <int, String>{};
     for (var page in pages) {
-      allTextBlocks[page.pageNumber] = page.blocks.where((block) => block.type == "text").toList();
-      imageBlocks[page.pageNumber] = page.blocks.where((b) => b.type == "image").toList();
+      allTextBlocks[page.pageNumber] = page.blocks
+          .where((block) => block.type == "text")
+          .toList();
+      imageBlocks[page.pageNumber] = page.blocks
+          .where((b) => b.type == "image")
+          .toList();
     }
 
     int imgIndex = 0;
@@ -50,14 +52,18 @@ Future<void> extractPdfWorker(Map<String, dynamic> data) async {
       final imgBlocks = entry.value;
       final textBlocks = allTextBlocks[pageNumber] ?? [];
 
-
       for (var imgBlock in imgBlocks) {
         final top = imgBlock.bbox.top;
         final bottom = imgBlock.bbox.bottom;
         final left = imgBlock.bbox.left;
         final right = imgBlock.bbox.right;
 
-        Rect captionRect = Rect.fromLTRB(left - 10, bottom, right + 10, bottom + 75);
+        Rect captionRect = Rect.fromLTRB(
+          left - 10,
+          bottom,
+          right + 10,
+          bottom + 75,
+        );
         // Search for caption in textBlocks
         for (var textBlock in textBlocks) {
           final lines = textBlock.lines;
@@ -76,18 +82,24 @@ Future<void> extractPdfWorker(Map<String, dynamic> data) async {
 
           if (captionRect.overlaps(textBlock.bbox)) {
             // Caption found
-            imageCaptions[imgIndex] = textBlock.lines?.map((line) => line.text).join(' ') ?? 'Illustrated Above';
+            imageCaptions[imgIndex] =
+                textBlock.lines?.map((line) => line.text).join(' ') ??
+                'Illustrated Above';
             break;
           }
         }
 
-        imageCaptions[imgIndex] = imageCaptions[imgIndex] ?? 'Illustrated Above';
+        imageCaptions[imgIndex] =
+            imageCaptions[imgIndex] ?? 'Illustrated Above';
         imgIndex++;
       }
     }
 
     int imageCounter = 0;
-    int totalImages = imageBlocks.values.fold(0, (sum, blocks) => sum + blocks.length);
+    int totalImages = imageBlocks.values.fold(
+      0,
+      (sum, blocks) => sum + blocks.length,
+    );
 
     imgIndex = 0;
 
@@ -143,4 +155,3 @@ Future<void> extractPdfWorker(Map<String, dynamic> data) async {
     sendPort.send({"error": e.toString()});
   }
 }
-

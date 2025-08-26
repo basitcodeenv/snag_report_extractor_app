@@ -15,7 +15,11 @@
 #endif
 
 // ----------------------------- Error Handling ---------------------------
+#ifdef _WIN32
+static __declspec(thread) char last_error[1024]; // thread-local error buffer
+#else
 static __thread char last_error[1024]; // thread-local error buffer
+#endif
 
 // Store error string
 static void set_last_error(const char* fmt, ...) {
@@ -235,7 +239,6 @@ DLL_EXPORT char* extract_page_json(const char* filename, int page_number, bool i
         }
         fz_drop_output(ctx, out);
         fz_drop_buffer(ctx, buf);
-        fz_drop_context(ctx);
     }
     fz_catch(ctx)
     {
@@ -245,7 +248,8 @@ DLL_EXPORT char* extract_page_json(const char* filename, int page_number, bool i
         }
         set_last_error("Failed to extract page %d from %s", page_number, filename);
     }
-
+    fz_drop_context(ctx);
+    
     return result;
 }
 

@@ -12,7 +12,8 @@ import 'package:snag_report_extractor_app/src/features/pdf_extractor/presentatio
 class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
   final DirectoryManager directoryManager;
 
-  PdfExtractorScreenController({ required this.directoryManager }) : super(PdfExtractorState());
+  PdfExtractorScreenController({required this.directoryManager})
+    : super(PdfExtractorState());
 
   void startDragging() {
     state = state.copyWith(isDragging: true);
@@ -23,13 +24,10 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
   }
 
   void addToQueue(List<DropItem> files) {
-    state = state.copyWith(
-      files: [...state.files, ...files],
-    );
+    state = state.copyWith(files: [...state.files, ...files]);
   }
 
-  void removeFromQueue(DropItem file)
-  {
+  void removeFromQueue(DropItem file) {
     final progress = state.progress[file.path];
 
     if (progress?.isolate != null && progress?.done == false) {
@@ -46,10 +44,7 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
     try {
       String outputRoot = directoryManager.getDirectory();
 
-      state = state.copyWith(
-        isProcessing: true,
-        errors: [],
-      );
+      state = state.copyWith(isProcessing: true, errors: []);
 
       for (final file in state.files) {
         final fileName = file.name;
@@ -70,24 +65,25 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
         }
         await Directory(outputDir).create(recursive: true);
 
-        final receivePort = ReceivePort();
-
-        final isolate = await Isolate.spawn(
-          extractPdfWorker,
-          {
-            "sendPort": receivePort.sendPort,
-            "path": filePath,
-            "outputDir": outputDir,
+        state = state.copyWith(
+          progress: {
+            ...state.progress,
+            filePath: PdfFileProgress(fileName: fileName),
           },
         );
+
+        final receivePort = ReceivePort();
+
+        final isolate = await Isolate.spawn(extractPdfWorker, {
+          "sendPort": receivePort.sendPort,
+          "path": filePath,
+          "outputDir": outputDir,
+        });
 
         state = state.copyWith(
           progress: {
             ...state.progress,
-            filePath: PdfFileProgress(
-              fileName: fileName,
-              isolate: isolate,
-            ),
+            filePath: PdfFileProgress(fileName: fileName, isolate: isolate),
           },
         );
 
@@ -99,7 +95,10 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
             state = state.copyWith(
               progress: {
                 ...state.progress,
-                filePath: currentProgress.copyWith(error: progress["error"], done: true),
+                filePath: currentProgress.copyWith(
+                  error: progress["error"],
+                  done: true,
+                ),
               },
               errors: [...state.errors, progress["error"]],
               processedFiles: state.processedFiles + 1,
@@ -109,37 +108,46 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
           }
 
           if (progress["page"] != null && progress["pageCount"] != null) {
-              print(
-                "Processed page ${progress["page"]}/${progress["pageCount"]}",
-              );
+            print(
+              "Processed page ${progress["page"]}/${progress["pageCount"]}",
+            );
 
-            state = state.copyWith(progress: {
-              ...state.progress,
-              filePath: currentProgress.copyWith(
-                currentPage: progress["page"],
-                totalPages: progress["pageCount"],
-              ).markPageDone(),
-            });
+            state = state.copyWith(
+              progress: {
+                ...state.progress,
+                filePath: currentProgress
+                    .copyWith(
+                      currentPage: progress["page"],
+                      totalPages: progress["pageCount"],
+                    )
+                    .markPageDone(),
+              },
+            );
           }
 
           if (progress["image"] != null && progress["imageCount"] != null) {
             print(
               "Extracted image ${progress["image"]}/${progress["imageCount"]}",
             );
-            state = state.copyWith(progress: {
-              ...state.progress,
-              filePath: currentProgress.copyWith(
-                currentImage: progress["image"],
-                totalImages: progress["imageCount"],
-              ),
-            });
+            state = state.copyWith(
+              progress: {
+                ...state.progress,
+                filePath: currentProgress.copyWith(
+                  currentImage: progress["image"],
+                  totalImages: progress["imageCount"],
+                ),
+              },
+            );
           }
 
           if (progress["done"] == true) {
             state = state.copyWith(
               progress: {
                 ...state.progress,
-                filePath: currentProgress.copyWith(done: true, outputDir: progress["outputDir"]),
+                filePath: currentProgress.copyWith(
+                  done: true,
+                  outputDir: progress["outputDir"],
+                ),
               },
               processedFiles: state.processedFiles + 1,
             );
@@ -159,7 +167,11 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
 }
 
 final pdfExtractorScreenControllerProvider =
-    StateNotifierProvider<PdfExtractorScreenController, PdfExtractorState>((ref) {
-  final DirectoryManager directoryManager = ref.read(directoryManagerProvider.notifier);
-  return PdfExtractorScreenController(directoryManager: directoryManager);
-});
+    StateNotifierProvider<PdfExtractorScreenController, PdfExtractorState>((
+      ref,
+    ) {
+      final DirectoryManager directoryManager = ref.read(
+        directoryManagerProvider.notifier,
+      );
+      return PdfExtractorScreenController(directoryManager: directoryManager);
+    });

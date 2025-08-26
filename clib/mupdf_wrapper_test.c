@@ -202,13 +202,14 @@ int main(int argc, char **argv)
     fz_always(ctx)
     {
         fz_drop_document(ctx, doc);
-        fz_drop_context(ctx);
     }
     fz_catch(ctx)
     {
         fprintf(stderr, "Failed to process file: %s\n", filename);
+        fz_drop_context(ctx);
         return EXIT_FAILURE;
     }
 
+    fz_drop_context(ctx);
     return EXIT_SUCCESS;
 }

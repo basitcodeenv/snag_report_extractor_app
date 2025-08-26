@@ -1,5 +1,6 @@
 // pdf_extractor_screen.dart
 import 'dart:io';
+import 'package:alert_info/alert_info.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
@@ -31,6 +32,9 @@ class PdfExtractorScreen extends ConsumerWidget {
           children: [
             TextField(
               controller: TextEditingController(text: directoryManager),
+              onTap: () {
+                ref.read(directoryManagerProvider.notifier).selectDirectory();
+              },
               decoration: InputDecoration(
                 labelText: "Output Directory",
                 border: OutlineInputBorder(),
@@ -123,9 +127,13 @@ class PdfExtractorScreen extends ConsumerWidget {
                 final file = pdfExtractorScreenState.files[index];
                 final progress = pdfExtractorScreenState.progress[file.path];
 
-                return PdfFileCard(file: file, progress: progress, onDelete: () {
-                  pdfExtractorControllerProvider.removeFromQueue(file);
-                });
+                return PdfFileCard(
+                  file: file,
+                  progress: progress,
+                  onDelete: () {
+                    pdfExtractorControllerProvider.removeFromQueue(file);
+                  },
+                );
               },
             ),
             gapH8,
@@ -136,7 +144,37 @@ class PdfExtractorScreen extends ConsumerWidget {
                 icon: const Icon(Icons.play_arrow, size: 22),
                 label: const Text("Extract", style: TextStyle(fontSize: 16)),
                 onPressed: () async {
+                  // Show snackbar if no output directory is selected
+                  if (directoryManager == null || directoryManager.isEmpty) {
+                    AlertInfo.show(
+                      context: context,
+                      typeInfo: TypeInfo.error,
+                      position: MessagePosition.bottom,
+                      text: "Please select an output directory.",
+                    );
+                    return;
+                  }
+
                   await pdfExtractorControllerProvider.processPdfFiles();
+
+                  if (pdfExtractorScreenState.errors.isEmpty) {
+                    AlertInfo.show(
+                      context: context,
+                      typeInfo: TypeInfo.success,
+                      position: MessagePosition.bottom,
+                      text: "All files processed successfully.",
+                    );
+
+                    return;
+                  }
+
+                  AlertInfo.show(
+                    context: context,
+                    typeInfo: TypeInfo.error,
+                    position: MessagePosition.bottom,
+                    text:
+                        "${pdfExtractorScreenState.errors.length} files failed to process.",
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
