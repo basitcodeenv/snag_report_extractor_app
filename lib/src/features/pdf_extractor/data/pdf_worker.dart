@@ -152,6 +152,8 @@ Future<void> extractPdfWorker(Map<String, dynamic> data) async {
 
     sendPort.send({"done": true, "outputDir": outputDir});
   } catch (e) {
+    print("PDF Worker Error");
+    print(e);
     sendPort.send({"error": e.toString()});
   }
 }

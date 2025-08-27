@@ -8,7 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:snag_report_extractor_app/src/features/pdf_extractor/data/directory_manager.dart';
 import 'package:snag_report_extractor_app/src/features/pdf_extractor/data/pdf_worker.dart';
 import 'package:snag_report_extractor_app/src/features/pdf_extractor/presentation/pdf_extractor_state.dart';
-
+import 'package:snag_report_extractor_app/src/logging/talker.dart';
 class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
   final DirectoryManager directoryManager;
 
@@ -16,21 +16,26 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
     : super(PdfExtractorState());
 
   void startDragging() {
+    talker.debug("Dragging started");
     state = state.copyWith(isDragging: true);
   }
 
   void stopDragging() {
+    talker.debug("Dragging stopped");
     state = state.copyWith(isDragging: false);
   }
 
   void addToQueue(List<DropItem> files) {
+    talker.info("Adding ${files.length} file(s) to queue");
     state = state.copyWith(files: [...state.files, ...files]);
   }
 
   void removeFromQueue(DropItem file) {
     final progress = state.progress[file.path];
+    talker.info("Removing file from queue: ${file.name}");
 
     if (progress?.isolate != null && progress?.done == false) {
+      talker.warning("Killing isolate for file: ${file.name}");
       progress?.isolate!.kill(priority: Isolate.immediate);
     }
 
@@ -43,6 +48,8 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
   Future<void> processPdfFiles() async {
     try {
       String outputRoot = directoryManager.getDirectory();
+      talker.info("Starting PDF processing. Output root: $outputRoot");
+      talker.info("Output root: $outputRoot");
 
       state = state.copyWith(isProcessing: true, errors: []);
 
@@ -51,6 +58,7 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
         final filePath = file.path;
 
         if (state.progress[filePath]?.done == true) {
+          talker.debug("Skipping $fileName (already processed)");
           // already processing this file
           continue;
         }
@@ -64,6 +72,8 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
           }
         }
         await Directory(outputDir).create(recursive: true);
+
+        talker.info("Processing file: $fileName -> $outputDir");
 
         state = state.copyWith(
           progress: {
@@ -92,6 +102,8 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
           final currentProgress = state.progress[filePath]!;
 
           if (progress["error"] != null) {
+            talker.error("Error processing $fileName", progress["error"]);
+
             state = state.copyWith(
               progress: {
                 ...state.progress,
@@ -108,8 +120,8 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
           }
 
           if (progress["page"] != null && progress["pageCount"] != null) {
-            print(
-              "Processed page ${progress["page"]}/${progress["pageCount"]}",
+            talker.debug(
+              "[$fileName] Processed page ${progress["page"]}/${progress["pageCount"]}",
             );
 
             state = state.copyWith(
@@ -126,8 +138,8 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
           }
 
           if (progress["image"] != null && progress["imageCount"] != null) {
-            print(
-              "Extracted image ${progress["image"]}/${progress["imageCount"]}",
+            talker.debug(
+              "[$fileName] Extracted image ${progress["image"]}/${progress["imageCount"]}",
             );
             state = state.copyWith(
               progress: {
@@ -141,6 +153,7 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
           }
 
           if (progress["done"] == true) {
+            talker.log("Finished processing $fileName");
             state = state.copyWith(
               progress: {
                 ...state.progress,
@@ -156,12 +169,18 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
           }
         }
       }
+    } catch (e, st) {
+      talker.error("Unexpected error in processPdfFiles", e, st);
+      rethrow;
     } finally {
+      talker.info("Processing finished");
       state = state.copyWith(isProcessing: false, currentFile: null);
     }
   }
 
   void clearErrors() {
+    talker.info("Clearing all errors");
+
     state = state.copyWith(errors: []);
   }
 }

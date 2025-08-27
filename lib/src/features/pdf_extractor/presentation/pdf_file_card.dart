@@ -19,7 +19,7 @@ class PdfFileCard extends StatelessWidget {
     // final eta = progress?.remainingTime;
     // print('ETA');
     // print(eta);
-    final progressRatio = (progress != null)
+    final progressRatio = (progress != null && progress?.error == null)
         ? (progress!.totalPages > 0)
               ? progress!.currentPage / progress!.totalPages
               : null
@@ -80,7 +80,7 @@ class PdfFileCard extends StatelessWidget {
                     backgroundColor: Colors.grey.shade200,
                     labelStyle: const TextStyle(color: Colors.grey),
                   )
-                else if (progress!.done)
+                else if (progress!.done && progress!.error == null)
                   Chip(
                     label: const Text("Complete"),
                     backgroundColor: Colors.green.shade100,
@@ -88,7 +88,7 @@ class PdfFileCard extends StatelessWidget {
                   )
                 else if (progress!.error != null)
                   Chip(
-                    label: Text(progress!.error!),
+                    label: Text("Failed"),
                     backgroundColor: Colors.red.shade100,
                     labelStyle: const TextStyle(color: Colors.red),
                   ),

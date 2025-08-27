@@ -49,5 +49,6 @@ app.*.map.json
 clib/build/
 clib/mupdf/
 
+dmg-staging
 
 assets/sample.pdf

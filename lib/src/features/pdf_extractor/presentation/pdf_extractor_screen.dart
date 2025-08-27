@@ -4,11 +4,13 @@ import 'package:alert_info/alert_info.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:go_router/go_router.dart';
 import 'package:snag_report_extractor_app/src/constants/app_sizes.dart';
 import 'package:snag_report_extractor_app/src/features/pdf_extractor/data/directory_manager.dart';
 import 'package:snag_report_extractor_app/src/features/pdf_extractor/presentation/pdf_extractor_controller.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:snag_report_extractor_app/src/features/pdf_extractor/presentation/pdf_file_card.dart';
+import 'package:snag_report_extractor_app/src/routing/app_routing.dart';
 
 class PdfExtractorScreen extends ConsumerWidget {
   const PdfExtractorScreen({super.key});
@@ -24,7 +26,18 @@ class PdfExtractorScreen extends ConsumerWidget {
     final directoryManager = ref.watch(directoryManagerProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Snag Report Extractor')),
+      appBar: AppBar(
+        title: const Text('Snag Report Extractor'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: IconButton(
+              onPressed: () => context.goNamed(AppRoute.logs.name),
+              icon: const Icon(Icons.monitor_heart_rounded),
+            ),
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -144,10 +157,11 @@ class PdfExtractorScreen extends ConsumerWidget {
                 icon: const Icon(Icons.play_arrow, size: 22),
                 label: const Text("Extract", style: TextStyle(fontSize: 16)),
                 onPressed: () async {
+                  final scaffoldContext = context;
                   // Show snackbar if no output directory is selected
                   if (directoryManager == null || directoryManager.isEmpty) {
                     AlertInfo.show(
-                      context: context,
+                      context: scaffoldContext,
                       typeInfo: TypeInfo.error,
                       position: MessagePosition.bottom,
                       text: "Please select an output directory.",
@@ -157,9 +171,16 @@ class PdfExtractorScreen extends ConsumerWidget {
 
                   await pdfExtractorControllerProvider.processPdfFiles();
 
-                  if (pdfExtractorScreenState.errors.isEmpty) {
+                  // Check if the context is still mounted before using it
+                  if (!scaffoldContext.mounted) return;
+
+
+                  // Refresh state after processing to get updated errors
+                  final updatedState = ref.read(pdfExtractorScreenControllerProvider);
+
+                  if (updatedState.errors.isEmpty) {
                     AlertInfo.show(
-                      context: context,
+                      context: scaffoldContext,
                       typeInfo: TypeInfo.success,
                       position: MessagePosition.bottom,
                       text: "All files processed successfully.",
@@ -169,11 +190,11 @@ class PdfExtractorScreen extends ConsumerWidget {
                   }
 
                   AlertInfo.show(
-                    context: context,
+                    context: scaffoldContext,
                     typeInfo: TypeInfo.error,
                     position: MessagePosition.bottom,
                     text:
-                        "${pdfExtractorScreenState.errors.length} files failed to process.",
+                        "${updatedState.errors.length} files failed to process.",
                   );
                 },
                 style: ElevatedButton.styleFrom(
