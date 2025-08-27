@@ -30,9 +30,13 @@ Future<void> extractPdfWorker(Map<String, dynamic> data) async {
   final repo = MuPdfRepository.initialize();
   print("Repository initialized");
   try {
+    final totalPages = repo.getPageCount(path);
+    // send test page
+    sendPort.send({"page": 999, "pageCount": totalPages});
+
     final output = repo.extractAllJson(path, false);
     final pages = output["pages"] as List<MuPdfPage>;
-    final totalPages = output["page_count"] as int;
+    // final totalPages = output["page_count"] as int;
 
     Map<int, List<MuPdfBlock>> allTextBlocks = {};
     final imageBlocks = <int, List<MuPdfBlock>>{};
