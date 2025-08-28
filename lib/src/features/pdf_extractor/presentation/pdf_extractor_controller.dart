@@ -5,6 +5,9 @@ import 'dart:isolate';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
+import 'dart:ui' as ui;
+import 'package:flutter/painting.dart' as ui;
+import 'dart:typed_data';
 import 'package:snag_report_extractor_app/src/features/pdf_extractor/data/directory_manager.dart';
 import 'package:snag_report_extractor_app/src/features/pdf_extractor/data/pdf_worker.dart';
 import 'package:snag_report_extractor_app/src/features/pdf_extractor/presentation/pdf_extractor_state.dart';
@@ -137,16 +140,29 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
             );
           }
 
-          if (progress["image"] != null && progress["imageCount"] != null) {
+
+          if (msg["imageBytes"] != null) {
+            final bytes = msg["imageBytes"] as Uint8List;
+            final caption = msg["caption"] as String;
+            final count = msg["imgCount"] as int;
+            final totalImages = msg["totalImages"] as int;
+
+            // 🔹 Render with TextPainter
+            final rendered = await _renderImageWithCaption(bytes, caption);
+            final outputBytes = await _imageToBytes(rendered);
+
+            final file = File("$outputDir/image_$count.png");
+            await file.writeAsBytes(outputBytes);
+
             talker.debug(
-              "[$fileName] Extracted image ${progress["image"]}/${progress["imageCount"]}",
+              "[$fileName] Extracted image $totalImages/$count",
             );
             state = state.copyWith(
               progress: {
                 ...state.progress,
                 filePath: currentProgress.copyWith(
-                  currentImage: progress["image"],
-                  totalImages: progress["imageCount"],
+                  currentImage: count,
+                  totalImages: totalImages,
                 ),
               },
             );
@@ -176,6 +192,68 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
       talker.info("Processing finished");
       state = state.copyWith(isProcessing: false, currentFile: null);
     }
+  }
+
+  /// Convert ui.Image to PNG bytes
+  Future<Uint8List> _imageToBytes(ui.Image image) async {
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    return byteData!.buffer.asUint8List();
+  }
+
+  /// Render caption with TextPainter
+  Future<ui.Image> _renderImageWithCaption(
+    Uint8List imageBytes,
+    String caption, {
+    double fontSize = 20,
+    double padding = 10,
+  }) async {
+    final codec = await ui.instantiateImageCodec(imageBytes);
+    final frame = await codec.getNextFrame();
+    final original = frame.image;
+
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+    final paint = ui.Paint();
+
+    // Caption text
+    final textPainter = ui.TextPainter(
+      text: ui.TextSpan(
+        text: caption,
+        style: ui.TextStyle(
+          color: const ui.Color(0xFF000000),
+          fontSize: fontSize,
+          fontFamily: 'Roboto',
+        ),
+      ),
+      textAlign: ui.TextAlign.left,
+      textDirection: ui.TextDirection.ltr,
+    );
+    textPainter.layout(maxWidth: original.width.toDouble());
+
+    final captionHeight = textPainter.height + (2 * padding);
+
+    // Draw background
+    canvas.drawRect(
+      ui.Rect.fromLTWH(
+        0,
+        0,
+        original.width.toDouble(),
+        original.height + captionHeight,
+      ),
+      paint..color = const ui.Color(0xFFFFFFFF),
+    );
+
+    // Draw original image
+    canvas.drawImage(original, ui.Offset.zero, paint);
+
+    // Draw caption (auto height, wraps text)
+    textPainter.paint(canvas, ui.Offset(padding, original.height + padding));
+
+    final picture = recorder.endRecording();
+    return await picture.toImage(
+      original.width,
+      (original.height + captionHeight).toInt(),
+    );
   }
 
   void clearErrors() {

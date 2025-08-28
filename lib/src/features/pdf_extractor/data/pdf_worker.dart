@@ -1,27 +1,11 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
-
 import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
 import 'package:snag_report_extractor_app/src/features/pdf_extractor/domain/mupdf.dart';
+import 'package:snag_report_extractor_app/src/features/pdf_extractor/data/mupdf_repository.dart';
 
-import 'mupdf_repository.dart';
-
-void _drawText(img.Image image, String text, int x, int y) {
-  final font = img.arial24;
-
-  img.drawString(
-    image,
-    text,
-    font: font,
-    x: x,
-    y: y,
-    color: img.ColorRgb8(0, 0, 0),
-    wrap: true,
-  );
-}
 
 Future<void> extractPdfWorker(Map<String, dynamic> data) async {
   SendPort sendPort = data["sendPort"];
@@ -75,19 +59,11 @@ Future<void> extractPdfWorker(Map<String, dynamic> data) async {
           }
 
           for (var line in lines) {
-            if (captionRect.overlaps(line.bbox)) {
+            if (captionRect.overlaps(line.bbox) && line.font.size == 10) {
               // Caption found
               imageCaptions[imgCapIndex] = line.text;
               break;
             }
-          }
-
-          if (captionRect.overlaps(textBlock.bbox)) {
-            // Caption found
-            imageCaptions[imgCapIndex] =
-                textBlock.lines?.map((line) => line.text).join(' ') ??
-                'Illustrated Above';
-            break;
           }
         }
 
@@ -97,7 +73,7 @@ Future<void> extractPdfWorker(Map<String, dynamic> data) async {
       }
     }
 
-    int imageCounter = 0;
+    int imageCounter = 1;
     int totalImages = imageBlocks.values.fold(
       0,
       (sum, blocks) => sum + blocks.length,
@@ -114,47 +90,21 @@ Future<void> extractPdfWorker(Map<String, dynamic> data) async {
         final caption = imageCaptions[imgCapIndex] ?? 'No Caption found';
         final tmpImgPath = '$tmpDir/${imgNames[imgNo]}';
         final bytes = await File(tmpImgPath).readAsBytes();
-        final originalImage = img.decodeImage(bytes);
 
-        if (originalImage == null) continue;
+        // 🔹 Send image bytes + caption to main isolate
+        sendPort.send({
+          "imageBytes": bytes,
+          "caption": caption,
+          "imgCount": imageCounter++,
+          "totalImages": totalImages,
+        });
 
-        // Calculate new image dimensions (add space for caption)
-        const captionHeight = 60;
-        const padding = 10;
-        final newHeight = originalImage.height + captionHeight + (padding * 2);
-
-        // Create new image with white background
-        final newImage = img.Image(
-          width: originalImage.width,
-          height: newHeight,
-        );
-        img.fill(newImage, color: img.ColorRgb8(255, 255, 255));
-
-        // Copy original image to new image
-        img.compositeImage(newImage, originalImage);
-
-        // Add caption text
-        _drawText(
-          newImage,
-          caption,
-          padding,
-          originalImage.height + padding + 10,
-        );
-
-        final imgPath = p.join(outputDir, "image_${imageCounter++}.jpg");
-
-        final newImageFile = File(imgPath);
-        await newImageFile.writeAsBytes(img.encodePng(newImage));
-
-        sendPort.send({"image": imageCounter, "imageCount": totalImages});
         imgCapIndex++;
       }
     }
 
     sendPort.send({"done": true, "outputDir": outputDir});
   } catch (e) {
-    print("PDF Worker Error");
-    print(e);
     sendPort.send({"error": e.toString()});
   } finally {
     // Cleanup
