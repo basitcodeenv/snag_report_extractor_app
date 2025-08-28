@@ -27,16 +27,14 @@ Future<void> extractPdfWorker(Map<String, dynamic> data) async {
   SendPort sendPort = data["sendPort"];
   String path = data["path"];
   String outputDir = data["outputDir"];
+  final tmpDir = "$outputDir/.tmp";
   final repo = MuPdfRepository.initialize();
   print("Repository initialized");
   try {
-    final totalPages = repo.getPageCount(path);
-    // send test page
-    sendPort.send({"page": 999, "pageCount": totalPages});
+    final totalPages = await repo.getPageCount(path);
+    sendPort.send({"page": 0, "pageCount": totalPages});
 
-    final output = repo.extractAllJson(path, false);
-    final pages = output["pages"] as List<MuPdfPage>;
-    // final totalPages = output["page_count"] as int;
+    final pages = await repo.extractAll(path);
 
     Map<int, List<MuPdfBlock>> allTextBlocks = {};
     final imageBlocks = <int, List<MuPdfBlock>>{};
@@ -50,7 +48,7 @@ Future<void> extractPdfWorker(Map<String, dynamic> data) async {
           .toList();
     }
 
-    int imgIndex = 0;
+    int imgCapIndex = 0;
     for (var entry in imageBlocks.entries) {
       final pageNumber = entry.key;
       final imgBlocks = entry.value;
@@ -66,7 +64,7 @@ Future<void> extractPdfWorker(Map<String, dynamic> data) async {
           left - 10,
           bottom,
           right + 10,
-          bottom + 75,
+          bottom + 55,
         );
         // Search for caption in textBlocks
         for (var textBlock in textBlocks) {
@@ -79,23 +77,23 @@ Future<void> extractPdfWorker(Map<String, dynamic> data) async {
           for (var line in lines) {
             if (captionRect.overlaps(line.bbox)) {
               // Caption found
-              imageCaptions[imgIndex] = line.text;
+              imageCaptions[imgCapIndex] = line.text;
               break;
             }
           }
 
           if (captionRect.overlaps(textBlock.bbox)) {
             // Caption found
-            imageCaptions[imgIndex] =
+            imageCaptions[imgCapIndex] =
                 textBlock.lines?.map((line) => line.text).join(' ') ??
                 'Illustrated Above';
             break;
           }
         }
 
-        imageCaptions[imgIndex] =
-            imageCaptions[imgIndex] ?? 'Illustrated Above';
-        imgIndex++;
+        imageCaptions[imgCapIndex] =
+            imageCaptions[imgCapIndex] ?? 'Illustrated Above';
+        imgCapIndex++;
       }
     }
 
@@ -105,20 +103,19 @@ Future<void> extractPdfWorker(Map<String, dynamic> data) async {
       (sum, blocks) => sum + blocks.length,
     );
 
-    imgIndex = 0;
+    imgCapIndex = 0;
 
     for (int pageNo = 1; pageNo <= totalPages; pageNo++) {
-      final page = repo.extractPageJson(path, pageNo, true);
+      final imgNames = await repo.extractImages(path, tmpDir, pageNo);
       sendPort.send({"page": pageNo, "pageCount": totalPages});
 
-      for (final imgBlock in page.blocks.where((b) => b.type == "image")) {
-        final base64Data = imgBlock.data;
-        if (base64Data == null || base64Data.isEmpty) continue;
-
-        final caption = imageCaptions[imgIndex] ?? 'No Caption found';
-
-        final bytes = base64Decode(base64Data);
+      final pageImgBlocks = imageBlocks[pageNo] ?? [];
+      for (int imgNo = 0; imgNo < pageImgBlocks.length; imgNo++) {
+        final caption = imageCaptions[imgCapIndex] ?? 'No Caption found';
+        final tmpImgPath = '$tmpDir/${imgNames[imgNo]}';
+        final bytes = await File(tmpImgPath).readAsBytes();
         final originalImage = img.decodeImage(bytes);
+
         if (originalImage == null) continue;
 
         // Calculate new image dimensions (add space for caption)
@@ -150,7 +147,7 @@ Future<void> extractPdfWorker(Map<String, dynamic> data) async {
         await newImageFile.writeAsBytes(img.encodePng(newImage));
 
         sendPort.send({"image": imageCounter, "imageCount": totalImages});
-        imgIndex++;
+        imgCapIndex++;
       }
     }
 
@@ -159,5 +156,10 @@ Future<void> extractPdfWorker(Map<String, dynamic> data) async {
     print("PDF Worker Error");
     print(e);
     sendPort.send({"error": e.toString()});
+  } finally {
+    // Cleanup
+    if (await Directory(tmpDir).exists()) {
+      await Directory(tmpDir).delete(recursive: true);
+    }
   }
 }

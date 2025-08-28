@@ -34,14 +34,14 @@ class MuPdfLine {
   MuPdfLine({required this.text, required this.bbox, required this.font});
 
   factory MuPdfLine.fromJson(Map<String, dynamic> json) {
-    final bbox = json['bbox'] as List<dynamic>;
+    final bbox = json['bbox'] as Map<String, dynamic>;
     return MuPdfLine(
       text: json['text'] as String,
-      bbox: Rect.fromLTRB(
-        (bbox[0] as num).toDouble(),
-        (bbox[1] as num).toDouble(),
-        (bbox[2] as num).toDouble(),
-        (bbox[3] as num).toDouble(),
+      bbox: Rect.fromLTWH(
+        (bbox['x'] as num).toDouble(),
+        (bbox['y'] as num).toDouble(),
+        (bbox['w'] as num).toDouble(),
+        (bbox['h'] as num).toDouble(),
       ),
       font: MuPdfLineFont.fromJson(json['font'] as Map<String, dynamic>),
     );
@@ -67,15 +67,15 @@ class MuPdfBlock {
     final lines = (json['lines'] as List?)
         ?.map((line) => MuPdfLine.fromJson(line))
         .toList();
-    final bbox = json['bbox'] as List<dynamic>;
+    final bbox = json['bbox'] as Map<String, dynamic>;
 
     return MuPdfBlock(
       type: json['type'] as String,
       bbox: Rect.fromLTWH(
-        (bbox[0] as num).toDouble(),
-        (bbox[1] as num).toDouble(),
-        (bbox[2] as num).toDouble(),
-        (bbox[3] as num).toDouble(),
+        (bbox['x'] as num).toDouble(),
+        (bbox['y'] as num).toDouble(),
+        (bbox['w'] as num).toDouble(),
+        (bbox['h'] as num).toDouble(),
       ),
       lines: lines,
       data: json['data'] as String?,
