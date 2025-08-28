@@ -200,6 +200,24 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
     return byteData!.buffer.asUint8List();
   }
 
+  String wrapCaption(String text, {int maxChars = 30}) {
+    final words = text.split(' ');
+    final lines = <String>[];
+    var currentLine = '';
+
+    for (final word in words) {
+      if ((currentLine + word).length <= maxChars) {
+        currentLine = currentLine.isEmpty ? word : '$currentLine $word';
+      } else {
+        lines.add(currentLine);
+        currentLine = word;
+      }
+    }
+    if (currentLine.isNotEmpty) lines.add(currentLine);
+
+    return lines.join('\n');
+  }
+
   /// Render caption with TextPainter
   Future<ui.Image> _renderImageWithCaption(
     Uint8List imageBytes,
@@ -215,20 +233,22 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
     final canvas = ui.Canvas(recorder);
     final paint = ui.Paint();
 
-    // Caption text
+    // Wrap caption (30 chars max per line, no word break)
+    final wrappedCaption = wrapCaption(caption, maxChars: 30);
+    // Prepare text painter
     final textPainter = ui.TextPainter(
       text: ui.TextSpan(
-        text: caption,
+        text: wrappedCaption,
         style: ui.TextStyle(
           color: const ui.Color(0xFF000000),
           fontSize: fontSize,
           fontFamily: 'Roboto',
         ),
       ),
-      textAlign: ui.TextAlign.left,
+      textAlign: ui.TextAlign.center,
       textDirection: ui.TextDirection.ltr,
     );
-    textPainter.layout(maxWidth: original.width.toDouble());
+    textPainter.layout(maxWidth: original.width.toDouble() - (2 * padding));
 
     final captionHeight = textPainter.height + (2 * padding);
 
@@ -246,8 +266,10 @@ class PdfExtractorScreenController extends StateNotifier<PdfExtractorState> {
     // Draw original image
     canvas.drawImage(original, ui.Offset.zero, paint);
 
-    // Draw caption (auto height, wraps text)
-    textPainter.paint(canvas, ui.Offset(padding, original.height + padding));
+    // Draw caption (centered, auto height, wraps text)
+    final dx = (original.width - textPainter.width) / 2;
+    final dy = original.height + padding;
+    textPainter.paint(canvas, ui.Offset(dx, dy));
 
     final picture = recorder.endRecording();
     return await picture.toImage(

@@ -68,7 +68,7 @@ Future<void> extractPdfWorker(Map<String, dynamic> data) async {
         }
 
         imageCaptions[imgCapIndex] =
-            imageCaptions[imgCapIndex] ?? 'Illustrated Above';
+            imageCaptions[imgCapIndex] ?? 'As Indicated by the Highlights in the picture';
         imgCapIndex++;
       }
     }
